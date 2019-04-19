@@ -166,16 +166,17 @@ callF_wrapped = @(x,varargin) fcn_wrapper( callF, errFcn, maxIts, ...
 [f,x,taskInteger,outer_count, k] = lbfgsb_wrapper( m, x, l, u, nbd, ...
     callF_wrapped, factr, pgtol, ...
     iprint, maxIts, maxTotalIts);
-
+info.xhist(:,printEvery)= x;
 info.iterations     = outer_count;
 info.totalIterations = k;
 info.lbfgs_message1  = findTaskString( taskInteger );
-errHist = fcn_wrapper([], [], [], printEvery);
+[errHist, xHist] = fcn_wrapper([], [], [], printEvery);
 info.err = errHist;
+info.xhist=xHist;
 end % end of main function
 
 function [f,g] = fcn_wrapper( callF, errFcn, maxIts, printEvery, x, varargin )
-persistent k history
+persistent k history xhist
 if isempty(k), k = 1; end
 if nargin==4
     % reset persistent variables and return information
@@ -184,9 +185,11 @@ if nargin==4
             printFcn(k,history);
         end
         f = history(1:k,:);
+        g = xhist(:,1:k);
     end
     history = [];
     k = [];
+    xhist =[];
     return;
 end
 if isempty( history )
@@ -197,16 +200,20 @@ if isempty( history )
     history     = zeros( maxIts, width );
 end
 
+if isempty(xhist)
+    xhist = zeros(length(x),maxIts);
+end    
+
 % Find function value and gradient:
 [f,g] = callF(x);
 
 if nargin > 5
     outerIter = varargin{1}+1;
-    
+    xhist(:,outerIter) = x;
     history(outerIter,1)    = f;
     history(outerIter,2)    = norm(g,Inf); % g is not projected
     if isa( errFcn, 'function_handle' )
-        history(outerIter,3) = errFcn(x);
+       history(outerIter,3) = errFcn(x);
     elseif iscell( errFcn )
         for j = 1:length(errFcn)
             history(outer_count,j+2) = errFcn{j}(x);
