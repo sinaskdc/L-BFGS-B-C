@@ -157,8 +157,11 @@ iprint  = setOpts('verbose',-1);
 % I recommend you set this -1 and use the Matlab print features
 % (e.g., set printEvery )
 
-fcn_wrapper([], [], [], printEvery); % initialized persistent variables
-callF_wrapped = @(x,varargin) fcn_wrapper( callF, errFcn, maxIts, ...
+minormax = setOpts('minmax',0);
+% minimze or maximize the object function 0: minized 1: maximized
+
+fcn_wrapper(minormax,[], [], [], printEvery); % initialized persistent variables
+callF_wrapped = @(x,varargin) fcn_wrapper(minormax, callF, errFcn, maxIts, ...
     printEvery, x, varargin{:} );
 % callF_wrapped = @(x,varargin)callF(x); % also valid, but simpler
 
@@ -170,22 +173,25 @@ info.xhist(:,printEvery)= x;
 info.iterations     = outer_count;
 info.totalIterations = k;
 info.lbfgs_message1  = findTaskString( taskInteger );
-[errHist, xHist] = fcn_wrapper([], [], [], printEvery);
+[errHist, xHist] = fcn_wrapper(minormax,[], [], [], printEvery);
 info.err = errHist;
 info.xhist=xHist;
 end % end of main function
 
-function [f,g] = fcn_wrapper( callF, errFcn, maxIts, printEvery, x, varargin )
+function [f,g] = fcn_wrapper( minormax, callF, errFcn, maxIts, printEvery, x, varargin )
 persistent k history xhist
 if isempty(k), k = 1; end
-if nargin==4
+if nargin==5
     % reset persistent variables and return information
     if ~isempty(history) && ~isempty(k) 
         if printEvery > 0
-            printFcn(k,history);
+            printFcn(minormax,k,history);
         end
         f = history(1:k,:);
         g = xhist(:,1:k);
+        if minormax==1
+            f=-f;
+        end
     end
     history = [];
     k = [];
@@ -206,8 +212,13 @@ end
 
 % Find function value and gradient:
 [f,g] = callF(x);
+if minormax==1
+    f=-f;
+    g=-g;
+end
 
-if nargin > 5
+
+if nargin > 6
     outerIter = varargin{1}+1;
     xhist(:,outerIter) = x;
     history(outerIter,1)    = f;
@@ -227,7 +238,7 @@ if nargin > 5
 %         fprintf('At iterate %5d, f(x)= %.2e, ||grad||_infty = %.2e [MATLAB]\n',...
 %             k,history(k,1),history(k,2) );
         if (printEvery > 0) && ~isinf(printEvery) && ~mod(k,printEvery) 
-            printFcn(k,history);
+            printFcn(minormax,k,history);
         end
         k = outerIter;
     end
@@ -238,7 +249,10 @@ end
 end
 
 
-function printFcn(k,history)
+function printFcn(minormax,k,history)
+if minormax==1
+   history(:,1)=-history(:,1);
+end
 fprintf('Iter %5d, f(x) = %2e, ||grad||_infty = %.2e', ...
     k, history(k,1), history(k,2) );
 for col = 3:size(history,2)
