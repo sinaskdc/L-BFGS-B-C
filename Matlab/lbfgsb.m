@@ -166,9 +166,11 @@ callF_wrapped = @(x,varargin) fcn_wrapper(minormax, callF, errFcn, maxIts, ...
 % callF_wrapped = @(x,varargin)callF(x); % also valid, but simpler
 
 % Call the mex file
+tic;
 [f,x,taskInteger,outer_count, k] = lbfgsb_wrapper( m, x, l, u, nbd, ...
     callF_wrapped, factr, pgtol, ...
     iprint, maxIts, maxTotalIts);
+opt_time=toc;
 info.xhist(:,printEvery)= x;
 info.iterations     = outer_count;
 info.totalIterations = k;
@@ -176,6 +178,7 @@ info.lbfgs_message1  = findTaskString( taskInteger );
 [errHist, xHist] = fcn_wrapper(minormax,[], [], [], printEvery);
 info.err = errHist;
 info.xhist=xHist;
+info.opt_time=opt_time;
 end % end of main function
 
 function [f,g] = fcn_wrapper( minormax, callF, errFcn, maxIts, printEvery, x, varargin )
